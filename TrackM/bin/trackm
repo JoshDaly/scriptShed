@@ -1,0 +1,476 @@
+#!/usr/bin/python
+###############################################################################
+#                                                                             #
+#    trackm                                                                   #
+#                                                                             #
+#    Main entry point for th the trackm software                              #
+#                                                                             #
+#    Copyright (C) Josh Daly, Michael Imelfort                                #
+#                                                                             #
+###############################################################################
+#                                                                             #
+#    This program is free software: you can redistribute it and/or modify     #
+#    it under the terms of the GNU General Public License as published by     #
+#    the Free Software Foundation, either version 3 of the License, or        #
+#    (at your option) any later version.                                      #
+#                                                                             #
+#    This program is distributed in the hope that it will be useful,          #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
+#    GNU General Public License for more details.                             #
+#                                                                             #
+#    You should have received a copy of the GNU General Public License        #
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                             #
+###############################################################################
+
+__author__ = "Josh Daly, Michael Imelfort"
+__copyright__ = "Copyright 2014"
+__credits__ = ["Josh Daly", "Michael Imelfort"]
+__license__ = "GPLv3"
+__version__ = "0.2.0"
+__maintainer__ = "Josh Daly"
+__email__ = "joshua.daly@uqconnect.edu.au"
+__status__ = "Dev"
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+# system imports
+import argparse
+import sys
+
+# local imports
+from trackm.worker import Worker
+from trackm.server import Server
+from trackm.view import View as View
+from trackm.seqs import Seqs as Seqs
+#from misc.view import View
+from trackm.exceptions import *
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+def doWork(args):
+    """ Main wrapper"""
+    if(args.subparser_name == 'server'):
+        try:
+            port = args.port
+        except:
+            port = None
+
+        # create an instance of the server
+        S = Server(args.db,
+                   port)
+        if args.serv_parser_name == "importPairs":
+            print "*******************************************************************************"
+            print " [[TrackM %s]] Importing new pairs..." % (__version__)
+            print "*******************************************************************************"
+            S.importNewPairs(args.pairs, args.paths)
+
+        elif args.serv_parser_name == "makeHits":
+            # processing happenin'
+            # process outstanding hits
+            print "*******************************************************************************"
+            print " [[TrackM %s]] Running as processing server..." % (__version__)
+            print "*******************************************************************************"
+            S.makeHits(args.queueURL,
+                       args.commsPort,
+                       args.portRange,
+                       args.sgeBaseDir,
+                       args.workingDir,
+                       batches=args.batches,
+                       hitCache=args.hitCache)
+
+        elif args.serv_parser_name == "progress":
+            # get processing status
+            pass
+
+        elif args.serv_parser_name == "daemon":
+            print "*******************************************************************************"
+            print " [[TrackM %s]] Running as daemon..." % (__version__)
+            print "*******************************************************************************"
+            S.runAsDaemon()
+
+        else:
+            print "ERROR: Unknown option '%s' for mode 'server'" % args.serv_parser_name
+
+    elif(args.subparser_name == 'worker'):
+        """Create a TrackM worker and compare some Genomes!"""
+        print "*******************************************************************************"
+        print " [[TrackM %s]] Running as comparison worker..." % (__version__)
+        print "*******************************************************************************"
+        W = Worker(args.workID,
+                   args.gPath1,
+                   args.gid1,
+                   args.gPath2,
+                   args.gid2,
+                   args.ani,
+                   args.url)
+        W.compareGenomes(args.minLength, args.minIdentity)
+    
+    elif(args.subparser_name == 'seqs'):
+        # print fasta sequences to file
+        S = Seqs(args.db)
+        
+    elif(args.subparser_name == 'viewClean'):
+        # access trackm database
+        V = View(args.db, args.metadata, args.subSet, args.colourBy, args.status, args.cleanFastaFile, batches=args.batches)
+        print "*******************************************************************************"
+        print " [[TrackM %s]] Running in visualisation mode..." % (__version__)
+        print "*******************************************************************************"
+        
+        if args.view_parser_name == 'scatter':
+            print "                          Mode :  Scatter plot                                 "
+            print "*******************************************************************************"
+            V.scatterPlot()
+            
+        elif args.view_parser_name == 'frequency':            
+            print "                          Mode : Frequency plot                                "
+            print "*******************************************************************************"
+            V.frequencyPlot(args.showPlot,
+                            args.imageFormat,
+                            args.xLabel,
+                            args.yLabel,
+                            args.title,
+                            args.outFile,
+                            args.dpi,
+                            args.labelFontSize,
+                            args.markerStyle, 
+                            args.markerSize,
+                            args.edgeColour
+                            )
+                            
+        elif args.view_parser_name == 'network':
+            print "                          Mode : Network plot                                  "
+            print "*******************************************************************************"
+            V.networkPlot(args.showPlot,
+                          args.imageFormat,
+                          args.xLabel,
+                          args.yLabel,
+                          args.title,
+                          args.outFile,
+                          args.dpi,
+                          args.labelFontSize,
+                          args.nodeShape,
+                          args.nodeSize,
+                          args.edgeColour,
+                          args.nodeColour, 
+                          args.nodeFontColour,
+                          args.nodeFontSize,  
+                          args.nodeLabels)
+            
+        elif args.view_parser_name == 'test':
+            # test
+            V.testSomething()
+            
+        else:
+            print "ERROR: Unknown option '%s' for mode 'view'" % args.view_parser_name 
+    
+    elif(args.subparser_name == 'view'):
+        # access trackm database
+        V = View(args.db, args.metadata, args.subSet, args.colourBy, args.status, args.cleanFastaFile, batches=args.batches)
+        print "*******************************************************************************"
+        print " [[TrackM %s]] Running in visualisation mode..." % (__version__)
+        print "*******************************************************************************"
+        
+        if args.view_parser_name == 'scatter':
+            print "                          Mode :  Scatter plot                                 "
+            print "*******************************************************************************"
+            V.scatterPlot()
+            
+        elif args.view_parser_name == 'frequency':            
+            print "                          Mode : Frequency plot                                "
+            print "*******************************************************************************"
+            V.frequencyPlot(args.showPlot,
+                            args.imageFormat,
+                            args.xLabel,
+                            args.yLabel,
+                            args.title,
+                            args.outFile,
+                            args.dpi,
+                            args.labelFontSize,
+                            args.markerStyle, 
+                            args.markerSize,
+                            args.edgeColour
+                            )
+                            
+        elif args.view_parser_name == 'network':
+            print "                          Mode : Network plot                                  "
+            print "*******************************************************************************"
+            V.networkPlot(args.showPlot,
+                          args.weighted,
+                          args.imageFormat,
+                          args.xLabel,
+                          args.yLabel,
+                          args.title,
+                          args.outFile,
+                          args.dpi,
+                          args.labelFontSize,
+                          args.nodeShape,
+                          args.nodeSize,
+                          args.edgeColour,
+                          args.nodeColour, 
+                          args.nodeFontColour,
+                          args.nodeFontSize,  
+                          args.nodeLabels)
+            
+        elif args.view_parser_name == 'test':
+            # test
+            V.testSomething()
+            
+        else:
+            print "ERROR: Unknown option '%s' for mode 'view'" % args.view_parser_name
+
+    else:
+        print "ERROR: Unknown mode '%s'" % args.subparser_name
+
+def printHelp():
+    print '''\
+
+             ...::: TrackM :::...
+
+      Track HGT across species boundaries
+
+   -----------------------------------------
+                version: %s
+   -----------------------------------------
+
+    trackm server   -> Create a TrackM server to handle DB creation and I/O requests
+    trackm worker   -> Utilities for creation of pairwise genome comparisons
+    trackm view     -> Utilities for visualising HGT events and stats
+    trackm seqs     -> Print transferred DNA sequences to fasta file
+
+    USE: trackm OPTION -h to see detailed options
+    ''' % __version__
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(add_help=False)
+    subparsers = parser.add_subparsers(help="--", dest='subparser_name')
+
+    #-------------------------------------------------
+    #-------------------------------------------------
+    # Deploy a TrackM server ( has four modes )
+    server_parser = subparsers.add_parser('server',
+                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                          help='Create a TrackM server to handle DB creation and I/O requests',
+                                          description='Create a TrackM server to handle DB creation and I/O requests')
+
+    serv_subparsers = server_parser.add_subparsers(help="--", dest='serv_parser_name')
+
+    #-------------------------------------------------
+    # Import new pairs into the data base (create if necessary)
+    import_parser = serv_subparsers.add_parser('importPairs',
+                                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                               help='Import new pairs into the data base',
+                                               description='Import new pairs into the data base')
+    import_parser.add_argument("db", help="Path to the TrackM database to use / create")
+    import_parser.add_argument("pairs", help="File containing pairs to import")
+    import_parser.add_argument("paths", help="File linking contig IDs to paths")
+
+    #-------------------------------------------------
+    # Process selected outstanding pairs: (hits, annotate, etc. or get progress of pairs)
+    hit_parser = serv_subparsers.add_parser('makeHits',
+                                            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                            help='Process selected outstanding pairs',
+                                            description='Process selected outstanding pairs')
+    hit_parser.add_argument("db", help="Path to the TrackM database to use")
+    hit_parser.add_argument("queueURL", help="Information about the queue(s) to lodge pairs to")
+    hit_parser.add_argument("portRange", help="Ports to listen for workers on <FROM:TO> (NOTE: decides threads as numPorts == numWorkers)")
+    hit_parser.add_argument("sgeBaseDir", help="Path to location for storing SGE scripts and tmp files")
+    hit_parser.add_argument("-w", "--workingDir", help="Path to location for storing tmp files", default="/tmp")
+    hit_parser.add_argument("-b", "--batches", type=int, nargs='+', default=[], help="Process only particular pair batches [omit for all batches]")    
+    hit_parser.add_argument("--hitCache", type=int, default=5000, help="Hits to accumulate before writing to the DB")
+    hit_parser.add_argument("-c", "--commsPort", type=int, default=55000,  help="Port used for getting progress etc")
+
+    progress_parser = serv_subparsers.add_parser('progress',
+                                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                                 help='View the progress of currently running pairs',
+                                                 description='View the progress of currently running pairs')
+    progress_parser.add_argument("db", help="Path to the TrackM database to use")
+    progress_parser.add_argument("-c", "--commsPort", type=int, default=55000,  help="Port the running server will be listening on")
+
+    #-------------------------------------------------
+    # Run as a daemon to serve an instance of TrackM view etc...
+    daemon_parser = serv_subparsers.add_parser('daemon',
+                                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                               help='Run as a daemon to serve an instance of TrackM view etc...',
+                                               description='Run as a daemon to serve an instance of TrackM view etc...')
+    daemon_parser.add_argument("db", help="Path to the TrackM database to use")
+    daemon_parser.add_argument("-p", "--port", type=int, default=None, help="Port to listen on")
+
+    #-------------------------------------------------
+    # Access db and print out DNA sequences
+    seqs_parser = subparsers.add_parser('seqs',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='Grab transferred sequences in fasta format',
+                                        description='Grab transferred sequences in fasta format')
+    seqs_parser.add_argument("db",help="Path to the TrackM database to use")
+    #seqs_parser.add_argument("-o","--outFile",help="Output filename")
+
+    #-------------------------------------------------
+    #-------------------------------------------------
+    # Use a TrackM worker client to compare genomes
+    worker_parser = subparsers.add_parser('worker',
+                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                          help='Utilities for creation of pairwise genome comparisons',
+                                          description='Utilities for creation of pairwise genome comparisons')
+    worker_parser.add_argument("workID", type=int, help="Work ID for this task")
+    worker_parser.add_argument("gPath1", help="Full path to first genome fasta")
+    worker_parser.add_argument("gid1", help="Genome tree id for genome 1")
+    worker_parser.add_argument("gPath2", help="Full path to second genome fasta")
+    worker_parser.add_argument("gid2", help="Genome tree id for genome 2")
+    worker_parser.add_argument("ani", type=float, help="Higest ani of the two genomes")
+    worker_parser.add_argument("-m", "--minLength", type=int, default=300, help="Minimum length of hits to accept")
+    worker_parser.add_argument("-i", "--minIdentity", type=float, default=97.0, help="Minimum identity of hits to accept")
+    worker_parser.add_argument("url", help="URL of the TrackM server to pass results to")
+
+    #-------------------------------------------------
+    #-------------------------------------------------
+    # TrackM plotting utilities
+    view_parser = subparsers.add_parser('view',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='Utilities for visualising HGT events and stats',
+                                        description='Utilities for visualising HGT events and stats')
+    view_subparsers = view_parser.add_subparsers(help="--", dest='view_parser_name')
+
+    #plot_parser = view_subparsers.add_parser('plot',
+    #                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    #                                         help='Make plots',
+    #                                         description='Plot some stuff')
+
+    #view_parser.add_argument("url", type=int, help="URL of the TrackM server")
+    #view_parser.add_argument("port", type=int, help="Port the server is listening on")
+    #plot_parser.add_argument("transfersFile", help="csv file containing transfers")
+    #plot_parser.add_argument("-c","--chartType", default="Network",help="Plot to be produced; vocab: Network, Scatter, Frequency")
+    #plot_parser.add_argument("-lookup","--lookUpFile", help="File containing matched IMG IDs and Genome Tree IDs")
+    #plot_parser.add_argument("-comparison","--comparisonsFile", help="File containing IMG_ID IMG_ID 16S")
+    #plot_parser.add_argument("-d","--dirtyFile", help="File containing dirty transfer events")
+
+    scatter_parser = view_subparsers.add_parser('scatter',
+                                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                               help='Makes scatter plots',
+                                               description='Plot some stuff')
+    scatter_parser.add_argument("db", help="Path to the TrackM database to use")
+    scatter_parser.add_argument("metadata", help="Path to the metadata table to use")
+    scatter_parser.add_argument("cleanFastaFile", help="Path to the fasta file containing clean hits")
+    scatter_parser.add_argument("-b", "--batches", type=int, nargs='+', default=[], help="Process only particular pair batches [omit for all batches]")
+    scatter_parser.add_argument("--status", default="all", help="Set which genomes will be analysed. Vocab: finished or all.")
+    scatter_parser.add_argument("--showPlot", nargs='?',const= True, default =False, help="Display plot on screen. True or False")
+    scatter_parser.add_argument("--imageFormat", help="Format of output file e.g. png, svg etc.")
+    scatter_parser.add_argument("--xLabel", help="x-axis label.")
+    scatter_parser.add_argument("--yLabel", help="y-axis label.")
+    scatter_parser.add_argument("--title", help="Set plot title.")
+    scatter_parser.add_argument("-o","--outFile", help="Output file name.")
+    scatter_parser.add_argument("--dpi", type=int, help="Set dots per inch (dpi) of image.")
+    scatter_parser.add_argument("--labelFontSize", type=int, help="Set the font size for the x and y axis labels.")
+    scatter_parser.add_argument("--markerStyle", help="Set the marker style e.g. '+', '|', 'o' etc. ")
+    scatter_parser.add_argument("--colourBy", default = 'phylum' ,help="Colour nodes by metadata. Controlled vocab: 'phylum', 'bodySite','sequencingPlatform','Sequencingcentre' ")
+    scatter_parser.add_argument("--markerSize", type=int, help="Set the marker size.")
+    scatter_parser.add_argument("--edgeColour", help="Set the colour of the edges. Single colour or array of colours.")
+    scatter_parser.add_argument("-s","--subSet", type=int, default=0,help="Subset the data to reduce time taken to produce plots. NB: zero selects all data!")
+    
+    
+    network_parser = view_subparsers.add_parser('network',
+                                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                               help='Make network plots',
+                                               description='Plot some stuff')
+    network_parser.add_argument("db", help="Path to the TrackM database to use")
+    network_parser.add_argument("metadata", help="Path to the metadata table to use")
+    network_parser.add_argument("cleanFastaFile", help="Path to the fasta file containing clean hits")
+    network_parser.add_argument("-b", "--batches", type=int, nargs='+', default=[], help="Process only particular pair batches [omit for all batches]")
+    network_parser.add_argument("--status", default="all", help="Set which genomes will be analysed. Vocab: finished or all.")
+    network_parser.add_argument("--showPlot", nargs='?',const= True, default = False, help="Display plot on screen. True or False")
+    network_parser.add_argument("--weighted", nargs='?',const= True, default = False, help="Weight edges based on number of hits. True or False")
+    network_parser.add_argument("--imageFormat", default = 'png', help="Format of output file e.g. png, svg etc.")
+    network_parser.add_argument("--xLabel", default = False, help="x-axis label.")
+    network_parser.add_argument("--yLabel", default= False, help="y-axis label.")
+    network_parser.add_argument("--title", default="Network Plot", help="set plot title.")
+    network_parser.add_argument("-o","--outFile", default = "networkPlot",help="Output file name.")
+    network_parser.add_argument("--dpi", type=int, default=400, help="Set dots per inch (dpi) of image.")
+    network_parser.add_argument("--colourBy", default = 'phylum' ,help="Colour nodes by metadata. Controlled vocab: 'phylum', 'bodySite','sequencingPlatform','sequencingCentre' ")
+    network_parser.add_argument("--labelFontSize", type=int, default = 12,help="Set the font size for the x and y axis labels.")
+    network_parser.add_argument("--nodeSize", type=int, default = 300,help="Set size of the node")
+    network_parser.add_argument("--nodeShape", default = 'o',help="Set the node shape e.g. '+', '|', 'o' etc. ")
+    network_parser.add_argument("--edgeColour", default = "black", help="Set the colour of the edges. Single colour or array of colours.")
+    network_parser.add_argument("--nodeColour", default = "red", help="Set the colour of the nodes. Single colour or array of colours.")
+    network_parser.add_argument("--nodeFontColour", default = "black",help="Set the colour for the node labels.")
+    network_parser.add_argument("--nodeFontSize", default = 12,type=int, help="Set the font size for the node labels.")
+    network_parser.add_argument("--nodeLabels", default = False, help="Display node labels. True or False.")
+    network_parser.add_argument("-s","--subSet", type=int, default=0,help="Subset the data to reduce time taken to produce plots. NB: zero selects all data!")
+    
+    
+    frequency_parser = view_subparsers.add_parser('frequency',
+                                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                                 help='Make frequency plots',
+                                                 description='Shows the rate of lateral gene transfer normalised to the number of comparisons')
+    frequency_parser.add_argument("db", help="Path to the TrackM database to use")
+    frequency_parser.add_argument("metadata", help="Path to the metadata table to use")
+    frequency_parser.add_argument("cleanFastaFile", help="Path to the fasta file containing clean hits")
+    frequency_parser.add_argument("-b", "--batches", type=int, nargs='+', default=[], help="Process only particular pair batches [omit for all batches]")
+    frequency_parser.add_argument("--status", default="all", help="Set which genomes will be analysed. Vocab: finished or all.")
+    frequency_parser.add_argument("--showPlot", nargs='?', const= True, default = False, help="Display plot on screen. True or False")
+    frequency_parser.add_argument("--imageFormat", default= 'png', help="Format of output file e.g. png, svg etc.")
+    frequency_parser.add_argument("--xLabel", default='ANI distance', help="Set x-axis label.")
+    frequency_parser.add_argument("--yLabel", default='LGT events per 100 comparisons', help="Set y-axis label.")
+    frequency_parser.add_argument("--title", default= 'Frequency plot', help="set plot title.")
+    frequency_parser.add_argument("-o","--outFile", default="frequencyPlot", help="Output file name.")
+    frequency_parser.add_argument("--dpi", type=int, default=400, help="Set dots per inch (dpi) of image.")
+    frequency_parser.add_argument("--labelFontSize", default=12, type=int, help="Set the font size for the x and y axis labels.")
+    frequency_parser.add_argument("--colourBy", default = 'phylum' ,help="Colour nodes by metadata. Controlled vocab: 'phylum', 'bodySite','sequencingPlatform','Sequencingcentre' ")
+    frequency_parser.add_argument("--markerStyle", default= 'o', help="Set the marker style e.g. '+', '|', 'o' etc. ")
+    frequency_parser.add_argument("--markerSize", default=12 , type=int, help="Set the marker size.")
+    frequency_parser.add_argument("--edgeColour", default='black', help="Set the colour of the edges. Single colour or array of colours.")
+    frequency_parser.add_argument("-s","--subSet", type=int, default=0,help="Subset the data to reduce time taken to produce plots. NB: zero selects all data!")
+    
+
+    test_parser = view_subparsers.add_parser('test',
+                                             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                             help='Mikes test entry point',
+                                             description='Load data!')
+    test_parser.add_argument("db", help="Path to the TrackM database to use")
+    test_parser.add_argument("-a", "--ani", type=float, default=100., help="ANI cutoff")
+    test_parser.add_argument("-b", "--batch", type=int, default=1, help="Batch to use")
+
+    #-------------------------------------------------
+    # get and check options
+    args = None
+    if(len(sys.argv) == 1):
+        printHelp()
+        sys.exit(0)
+    elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
+        print "BamTyper: version %s %s %s" % (__version__, __copyright__, __author__)
+        sys.exit(0)
+    elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
+        printHelp()
+        sys.exit(0)
+    else:
+        args = parser.parse_args()
+
+    # profiling happens here. If you'd like to track the speed your code runs at
+    # then set the following to True and voila!
+    if(False):
+        import cProfile
+        cProfile.run('doWork(args)', 'profile')
+        ##########################################
+        ##########################################
+        # Use this in python console!
+        #import pstats
+        #p = pstats.Stats('prof')
+        #p.sort_stats('cumulative').print_stats(10)
+        #p.sort_stats('time').print_stats(10)
+        ##########################################
+        ##########################################
+    else:
+        doWork(args)
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
